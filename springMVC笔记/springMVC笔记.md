@@ -1,3 +1,22 @@
+- [问题1. Tomcat地狱bug，404](#问题1-tomcat地狱bug404)
+- [Servlet、jsp、javabean在MVC中所扮演的角色及Tomcat](#servletjspjavabean在mvc中所扮演的角色及tomcat)
+- [springMVC的执行原理及流程](#springmvc的执行原理及流程)
+- [web.xml里需要注意](#webxml里需要注意)
+- [maven静态资源过滤问题](#maven静态资源过滤问题)
+- [spring框架中的database.properties](#spring框架中的databaseproperties)
+- [spring里的数据库连接池](#spring里的数据库连接池)
+- [ssm整合：spring层](#ssm整合spring层)
+- [问题bug，spring文件的约束写错](#问题bugspring文件的约束写错)
+- [问题bug：Usermapper.xml文件中的SQL语句问题](#问题bugusermapperxml文件中的sql语句问题)
+- [疑点：mvc:default-servlet-handler/ 是 Spring MVC 框架中的一个配置标签](#疑点mvcdefault-servlet-handler-是-spring-mvc-框架中的一个配置标签)
+- [疑点：并没有把bookMapper这个接口在spring里用bean进行注册](#疑点并没有把bookmapper这个接口在spring里用bean进行注册)
+- [疑点：int updateBook()的返回值为什么是int](#疑点int-updatebook的返回值为什么是int)
+- [疑点：前端提交的表单里的参数，后端是如何接收到的](#疑点前端提交的表单里的参数后端是如何接收到的)
+- [问题bug: web.xml里面dispatcherServlet的参数里关于servlet的配置文件问题](#问题bug-webxml里面dispatcherservlet的参数里关于servlet的配置文件问题)
+- [疑点：在WEB-INF目录下的所有页面或者资源](#疑点在web-inf目录下的所有页面或者资源)
+- [疑点：HttpSession](#疑点httpsession)
+
+
 ## 问题1. Tomcat地狱bug，404
 究极http 404问题
 out文件夹的输出里面没有WEB-INFO文件夹，也没有index.jsp文件，没有jsp文件夹，查了好多资料后，仍未完全解决。
@@ -10,6 +29,8 @@ out文件夹的输出里面没有WEB-INFO文件夹，也没有index.jsp文件，
 解决了！！！！！最终是换了一个idea的版本，2021.1.4的版本，一切都会自动输出和加载，不需要手动了。真他妈巨坑。
 
 后来写的时候又遇到过404，还是idea的问题，需要手动在out里面加入lib依赖。
+
+这里坑还有，也就是每次在pom.xml添加一个依赖包，还要进project structure里面在lib里再添加上这个新的包，否则就会报错。
 
 ## Servlet、jsp、javabean在MVC中所扮演的角色及Tomcat
 
@@ -119,3 +140,179 @@ Spring 框架本身并不包含数据库连接池的实现，但它提供了对�
 这里涉及到mybatis-spring的一些使用，在这里新添加了一种动态地将Dao接口注入到Spring的一种方式，利用MapperScannerConfigurer类，MapperScannerConfigurer 是 Spring 框架中用于扫描 MyBatis 映射器（Mapper）接口的配置类。它的作用是自动扫描指定的包路径，将符合条件的 MyBatis 映射器接口注册为 Spring 的 Bean，从而将这些映射器接口交由 Spring 管理。
 
 在此之前的老方式，是创建一个mapper接口的实现类，要么把sqlSessionTemplate作为这个类的一个私有属性，然后在Spring配置文件中利用sqlSessionTemplate来注入sqlSession。要么让这个实现类继承sqlSessionDaoSupport，那么就可以直接利用sqlSessionFactory来注入。无论如何都需要另外写这样一个实现类。
+
+## 问题bug，spring文件的约束写错
+
+问题描述：org.xml.sax.SAXParseException; lineNumber: 13; columnNumber: 69; schema_reference.4: 无法读取方案文档 'https://www.springframework.org/schema/context/springbeans.xsd', 原因为 1) 无法找到文档; 2) 无法读取文档; 3) 文档的根元素不是 <xsd:schema>
+
+后经过查找，发现https://www.springframework.org/schema/context/springbeans.xsd这里应该写为spring-beans.xsd，少了一个横杠。
+
+
+## 问题bug：Usermapper.xml文件中的SQL语句问题
+
+遇到一个bug，表示bookId没有对应的getter方法，但是显然我的代码里是配置了getter方法的，查了一下，这种问题大多是参数名字写错了。然后我检查了一下，确实数据库列名和pojo类里都是bookID，而这里是bookId，之所以之前没出问题，主要是因为在Usermapper接口里，我用@Param进行了方法参数的注解，把参数名给改掉了
+```xml
+Books queryBookById(@Param("bookId") int id);
+```
+
+经查，如果没有用@Param注解进行重命名，那么mapper.xml里的sql语句的占位符，需要和数据库列名保持完全一致，否则就会报500错误。这个@Param注解的对于占位符的重命名只在对应的映射文件xml文件生效，其他地方无须管。
+
+## 疑点：<mvc:default-servlet-handler/> 是 Spring MVC 框架中的一个配置标签
+
+一般在springmvc的配置文件中都会写上，作用如下：
+
+用于配置默认的 Servlet 处理器。它的主要作用是将请求交给 Web 容器的默认 Servlet 处理，用于处理静态资源，如图片、CSS、JavaScript 文件等。
+
+在传统的 Servlet 规范中，每个 Web 应用程序都有一个默认的 Servlet，通常命名为 "default" 或 "defaultServlet"，它负责处理未匹配到其他 Servlet 的请求。这个默认的 Servlet 可以处理静态资源请求，如根据 URL 路径返回对应的静态文件内容。
+
+在 Spring MVC 中，默认情况下，DispatcherServlet 负责处理所有的请求，包括动态请求和静态资源请求。但对于静态资源请求，通常直接交给默认的 Servlet 处理效率更高，因为默认的 Servlet 通常是 Web 容器的一部分，对静态资源的处理会更加优化。
+
+使用 <mvc:default-servlet-handler/> 可以将静态资源的请求交给默认的 Servlet 处理，从而提高性能和效率。这个标签会自动配置一个 DefaultServletHttpRequestHandler，用于处理静态资源请求。
+
+
+## 疑点：并没有把bookMapper这个接口在spring里用bean进行注册
+
+查了一下，在spring里，接口一般不会注册，而是把他们的实现类进行bean注册，因为IOC的思想，多态嘛，把接口作为方法参数，用set方法把实体类注入进去，所以依赖注入一般是指的把实体类注入进去。
+
+之所以在这个项目里有这样的疑问，是把UserServiceImpl实现类进行注册的时候：
+
+```xml
+<bean id="BookServiceImpl" class="com.kuang.service.BookServiceImpl">
+        <property name="bookMapper" ref="bookMapper"/>
+</bean>
+```
+
+service层调用dao层，因此要把bookMapper进行私有化，然而我发现这个bookMapper接口并没有bean注册，所以产生疑问。答案是因为我们写了bookMapper.xml这个文件，里面的mapper标签，在 MyBatis 中，<mapper> 标签用于将 Mapper 接口与对应的 SQL 映射文件关联起来，这样 MyBatis 在扫描 Mapper 接口时会自动将其注册为 bean，无需在 Spring 配置文件中再显式定义 <bean>。
+
+
+## 疑点：int updateBook()的返回值为什么是int
+
+我的项目里有一个mapper.xml文件里面对于方法updateBook是这样写的：
+```xml
+<update id="updateBook" parameterType="Books">
+        update ssmbuild.books set bookName=#{bookName}, bookCounts=#{bookCounts},detail=#{detail}
+        where bookID=#{bookID}
+</update>
+```
+ 而且mapper接口里的updateBook方法是这样声明的：int updateBook(Books books); 
+ 
+ 所以返回值为什么是int类型以及这个返回值到底是什么？
+
+ 在 MyBatis 中，执行更新操作时，<update> 标签中的 SQL 语句会更新数据库中的记录。在这个更新过程中，数据库会返回一个整数值，表示受影响的行数，即更新了多少条记录。
+
+ 这个方法的返回值类型是 int，它与 <update> 标签中的 SQL 语句的执行结果相关。在执行更新操作后，MyBatis 会返回一个表示受影响行数的整数值。这个值会被映射到方法的返回值，因此方法返回的是更新操作影响的行数。
+
+如果更新操作成功，返回的整数值通常是大于 0 的数，表示有记录被更新。如果更新操作没有影响任何记录，返回的整数值可能是 0，表示没有记录被更新。
+
+其余的insert和delete都会返回这个int，只有query返回的是查询的结果。
+
+## 疑点：前端提交的表单里的参数，后端是如何接收到的
+
+在前端的表单中，你使用了 name 属性来指定每个输入字段的名称，这些名称会作为参数传递给后端。因为你的 Books 类中的属性和前端表单中的输入字段名称是一致的，Spring MVC 能够自动将请求参数映射到 Books 对象的属性上，实现数据的绑定。
+
+前端代码如下：
+```html
+<form action="${pageContext.request.contextPath}/book/addBook" method="post">
+        <div class="form-group">
+            <label>书籍名称：</label>
+            <input type="text" name="bookName" class="form-control" >
+        </div>
+        <div class="form-group">
+            <label>书籍数量：</label>
+            <input type="text" name="bookCounts" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>书籍描述：</label>
+            <input type="text" name="detail" class="form-control">
+        </div>
+        <div class="form-group">
+            <input type="submit" class="form-control" value="添加">
+        </div>
+    </form>
+```
+
+具体来说，前端的表单提交时，根据 name 属性指定的参数名称，Spring MVC 会将这些参数值绑定到对应的 Books 对象属性上。在你的控制器方法中，使用 Books 参数接收这些参数值，并将其自动注入为一个 Books 对象。
+
+在你的控制器中的这段代码：
+
+```java
+@RequestMapping("/addBook")
+public String addBook(Books books) {
+    System.out.println("addBook=>" + books);
+    bookService.addBook(books);
+    return "redirect:/book/allBook";
+}
+```
+Books 对象 books 是通过请求参数的名称和表单中的输入字段的名称进行映射的。Spring MVC 会将请求参数中的值自动填充到 books 对象的对应属性上。
+
+因此，前端表单中的 bookName、bookCounts、detail 会被映射到 Books 对象的相应属性上。这样，你就能够在控制器中直接使用 books 对象，它会包含前端传递过来的属性值。
+
+总结：前端的表单提交会根据 name 属性将数据绑定到后端的参数上，Spring MVC 会自动映射请求参数到控制器方法的参数中，实现数据的自动绑定。因此，在控制器中直接使用 Books 参数，可以直接获取前端传递的属性值。
+
+
+## 问题bug: web.xml里面dispatcherServlet的参数里关于servlet的配置文件问题
+
+之前我们把servlet的配置文件写成了springmvc.xml，并不是总的，然后就报错出现了500问题，找不到其他层的bean。
+
+```xml
+<!--DispatcherServlet-->
+<servlet>
+<servlet-name>DispatcherServlet</servlet-name>
+<servletclass>
+org.springframework.web.servlet.DispatcherServlet</servlet-class>
+<init-param>
+<param-name>contextConfigLocation</param-name>
+<!--一定要注意:我们这里加载的是总的配置文件，之前被这里坑了！-->
+<param-value>classpath:applicationContext.xml</param-value>
+</init-param>
+<load-on-startup>1</load-on-startup>
+</servlet>
+```
+
+## 疑点：在WEB-INF目录下的所有页面或者资源
+
+只能通过controller或者servlet进行访问，不能通过/*.jsp请求直接访问。
+
+
+## 疑点：HttpSession
+
+HttpSession 是 Java Web 应用程序中的一个重要的服务器端会话管理机制，它允许在多个请求之间跟踪和维护用户的状态信息。通过 HttpSession，Web 应用程序可以在用户访问网站时存储和获取数据，而不需要将所有数据都嵌入到每个请求中。
+
+以下是 HttpSession 的一些关键特点和用法：
+
+会话的创建和销毁： HttpSession 对象在用户访问 Web 应用程序时创建，并在一段时间内保持活动状态。会话可以在用户关闭浏览器、超时或通过代码显式销毁时终止。
+
+数据存储和检索： 通过 HttpSession，你可以将数据存储在会话中，以便在用户的多个请求之间共享和保留状态。这对于存储用户登录信息、购物车内容、用户设置等很有用。
+
+会话标识： 每个 HttpSession 都有一个唯一的标识符（session ID），它通常是通过 cookie 在用户的浏览器中进行传递。服务器使用 session ID 来识别特定用户的会话。
+
+属性操作： 你可以在 HttpSession 中存储属性（键值对），以便存储和检索用户状态。常见的操作包括添加、获取和删除属性。
+
+并发处理： Web 容器负责管理 HttpSession 的并发访问。它会确保只有一个请求可以修改 HttpSession 中的数据，以避免数据不一致性。
+
+超时管理： HttpSession 有一个超时时间，定义了会话在没有活动的情况下保持多长时间。如果超过超时时间，会话会被自动销毁。
+
+在 Java 中，使用 HttpServletRequest 对象可以访问 HttpSession。以下是一个简单的示例：
+
+```java
+Copy code
+// 获取 HttpSession 对象
+HttpSession session = request.getSession();
+
+// 向 HttpSession 中添加属性
+session.setAttribute("username", "john");
+
+// 从 HttpSession 中获取属性
+String username = (String) session.getAttribute("username");
+
+// 从 HttpSession 中移除属性
+session.removeAttribute("username");
+
+// 获取会话 ID
+String sessionID = session.getId();
+```
+总之，HttpSession 是 Java Web 应用程序中用于管理用户会话状态的机制，允许在多个请求之间共享和保留用户数据。这对于实现用户状态管理和数据共享非常有用。
+
+
+
+
